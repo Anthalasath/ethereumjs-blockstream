@@ -44,6 +44,7 @@ export class BlockAndLogStreamer<TBlock extends Block, TLog extends Log> {
 		getLogs: (filterOptions: FilterOptions) => Promise<TLog[]>,
 		onError: (error: Error) => void,
 		configuration?: Configuration,
+		blockHistory?: TBlock[]
 	) {
 		if (getBlockByHash === undefined) throw new Error(`getBlockByHash must be provided`);
 		this.getBlockByHash = getBlockByHash;
@@ -52,6 +53,22 @@ export class BlockAndLogStreamer<TBlock extends Block, TLog extends Log> {
 		if (onError === undefined) throw new Error(`onError must be provided`);
 		this.onError = onError;
 		this.blockRetention = (configuration && configuration.blockRetention) ? configuration.blockRetention : 100;
+
+		if (blockHistory) {
+			this.reconcileNewBlocks(blockHistory);
+		}
+	}
+
+	public readonly getBlockHistory = async (): Promise<TBlock[]> => {
+		return this.blockHistory.then(list => list.toArray());
+	}
+
+	public readonly reconcileNewBlocks = async (blocks: TBlock[]): Promise<void> => {
+		while (blocks.length > 0) {
+			const block = blocks.shift();
+
+			if (block) this.reconcileNewBlock(block);
+		}
 	}
 
 	public readonly reconcileNewBlock = async (block: TBlock): Promise<void> => {

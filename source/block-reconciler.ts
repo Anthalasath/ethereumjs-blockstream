@@ -49,6 +49,7 @@ const backfill = async <TBlock extends Block>(getBlockByHash: GetBlockByHash<TBl
 	if (newBlock.parentHash === "0x0000000000000000000000000000000000000000000000000000000000000000")
 		return await rollback(blockHistory, onBlockRemoved);
 	const parentBlock = await getBlockByHash(newBlock.parentHash);
+	if (!!parentBlock) console.log("found parent");
 	if (parentBlock === null) throw new Error("Failed to fetch parent block.");
 	if (parseInt(parentBlock.number, 16) + blockRetention < parseInt(blockHistory.last().number, 16))
 		return await rollback(blockHistory, onBlockRemoved);
