@@ -44,20 +44,27 @@ async function getLatestBlock(): Promise<Block> {
   return doFetch("eth_getBlockByNumber", ["latest", false]);
 }
 
-const configuration: Configuration = { blockRetention: 100 }
+const configuration: Configuration = { blockRetention: 10 }
 
 let blockHistoryDb: Block[] = []
 
 const createBlockStreamer = (name: string, configuration: Configuration, blockHistory: Block[]) => { 
-  if (blockHistory.length) console.log("inserting block history");
-
-  const blockAndLogStreamer = new BlockAndLogStreamer(getBlockByHash, getLogs, console.error, configuration, blockHistoryDb);
+  const blockAndLogStreamer = new BlockAndLogStreamer(getBlockByHash, getLogs, console.error, configuration);
   const tokenOnBlockAdded = blockAndLogStreamer.subscribeToOnBlockAdded(block => console.log("added", block.hash));
   const tokenOnBlockRemoved = blockAndLogStreamer.subscribeToOnBlockRemoved(block => console.log("removed", block.hash));
   let interval: any = null;
   
   const start = async () => {
     console.log("starting %s", name);
+
+    if (blockHistory.length) {
+      console.log("inserting block history");
+
+      while (blockHistoryDb.length > 0) {
+        const block = blockHistoryDb.shift();
+        if (block) await blockAndLogStreamer.reconcileNewBlock(block);
+      }
+    }
 
     interval = setInterval(async () => {
       blockAndLogStreamer.reconcileNewBlock(await getLatestBlock());
@@ -93,5 +100,5 @@ setTimeout(() => {
   setTimeout(() => {
     blockStreamer2 = createBlockStreamer("blockStreamer2", configuration, blockHistoryDb);
     blockStreamer2.start();
-  }, 60e3);
+  }, 60e3 * 2);
 }, 60e3);
